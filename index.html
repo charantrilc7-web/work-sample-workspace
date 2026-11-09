@@ -1,0 +1,874 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Work Sample Workspace</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one-screen app. Top bar (task, timer, actions), then four panels: brief and trail on the left, editor with tests in the middle, assistant on the right. Under 1000px one panel shows at a time behind a tab bar. */
+:root{
+  --bg:#F4F6F9; --surface:#FFFFFF; --surface-2:#EDF0F5; --ink:#141A24; --muted:#586374; --line:#DCE1E9;
+  --accent:#2849D6; --accent-ink:#FFFFFF; --accent-soft:#E4E9FC;
+  --good:#17734A; --good-soft:#DDF3E8; --warn:#8F5600; --warn-soft:#FBEBCF; --bad:#B3321F; --bad-soft:#FBE1DC;
+  --syn-kw:#8A3FBF; --syn-str:#1F7A4D; --syn-com:#6E7A8B; --syn-num:#B0560A; --syn-fn:#2849D6;
+  --font-body:'Schibsted Grotesk',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1117; --surface:#141A23; --surface-2:#1B2330; --ink:#E6EAF0; --muted:#9AA5B5; --line:#27313F;
+    --accent:#8AA3FF; --accent-ink:#0D1117; --accent-soft:#1F2A4D;
+    --good:#4CC38A; --good-soft:#12301F; --warn:#E3A945; --warn-soft:#3A2A0C; --bad:#FF8A78; --bad-soft:#3E1A15;
+    --syn-kw:#C79BFF; --syn-str:#7FD8A8; --syn-com:#7E8A9C; --syn-num:#F0A862; --syn-fn:#8AA3FF; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D1117; --surface:#141A23; --surface-2:#1B2330; --ink:#E6EAF0; --muted:#9AA5B5; --line:#27313F;
+  --accent:#8AA3FF; --accent-ink:#0D1117; --accent-soft:#1F2A4D;
+  --good:#4CC38A; --good-soft:#12301F; --warn:#E3A945; --warn-soft:#3A2A0C; --bad:#FF8A78; --bad-soft:#3E1A15;
+  --syn-kw:#C79BFF; --syn-str:#7FD8A8; --syn-com:#7E8A9C; --syn-num:#F0A862; --syn-fn:#8AA3FF; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:14.5px;line-height:1.5;overflow:hidden}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:30}
+button,input,textarea,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h2,h3{margin:0;line-height:1.2}
+p{margin:0}
+a{color:var(--accent)}
+.mono{font-family:var(--font-mono)}
+.muted{color:var(--muted)}
+.small{font-size:12.5px}
+.label{font-family:var(--font-mono);font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.app{height:100%;display:grid;grid-template-rows:auto auto minmax(0,1fr);position:relative}
+.gut{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* top bar */
+.bar{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding-block:10px;border-bottom:1px solid var(--line);background:var(--surface)}
+.brand{display:flex;gap:10px;align-items:center;min-width:0}
+.mark{width:28px;height:28px;border-radius:8px;background:var(--accent);flex:none;display:grid;place-items:center;color:var(--accent-ink);font-family:var(--font-mono);font-weight:500;font-size:13px}
+.brand .t{font-weight:650;font-size:15px;letter-spacing:-.01em}
+.brand .s{font-size:12px;color:var(--muted)}
+.timer{display:grid;gap:4px;min-width:150px}
+.timer .tx{font-family:var(--font-mono);font-size:20px;font-weight:500;font-variant-numeric:tabular-nums;line-height:1}
+.timer .tx.warn{color:var(--warn)} .timer .tx.bad{color:var(--bad)}
+.prog{height:4px;border-radius:4px;background:var(--surface-2);overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:var(--accent);transition:width .6s linear}
+.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px;font-weight:600;font-size:13.5px;cursor:pointer}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn.sm{padding:3px 9px;font-size:12px;font-weight:600}
+kbd{font-family:var(--font-mono);font-size:10.5px;border:1px solid var(--line);border-radius:4px;padding:0 4px;color:var(--muted)}
+
+/* tab bar (narrow screens) */
+.tabs{display:none;gap:4px;padding-block:6px;border-bottom:1px solid var(--line);background:var(--surface);overflow-x:auto}
+.tabs button{border:0;background:none;padding:7px 12px;border-radius:8px;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap}
+.tabs button[aria-selected="true"]{background:var(--accent-soft);color:var(--accent)}
+.tabs button:not([aria-selected="true"]){grid-row:1}
+
+/* grid + panels */
+.grid{display:grid;gap:12px;padding-block:12px;min-height:0;
+  grid-template-columns:minmax(250px,300px) minmax(0,1fr) minmax(300px,380px);
+  grid-template-rows:minmax(0,1fr) minmax(0,1fr);
+  grid-template-areas:"brief code ai" "trail code ai"}
+.pn{background:var(--surface);border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden}
+.pn[data-p=brief]{grid-area:brief}.pn[data-p=trail]{grid-area:trail}.pn[data-p=code]{grid-area:code}.pn[data-p=ai]{grid-area:ai}
+.pn-h{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 14px;border-bottom:1px solid var(--line);flex:none;flex-wrap:wrap}
+.pn-b{overflow:auto;padding:12px 14px;min-height:0;flex:1}
+.pn-f{border-top:1px solid var(--line);padding:8px 14px;flex:none;font-size:12px;color:var(--muted)}
+@media (max-width:1000px){
+  .tabs{display:flex}
+  .grid{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);grid-template-areas:"main"}
+  .pn[data-p]{grid-area:main;display:none}
+  .grid[data-view=brief] .pn[data-p=brief],.grid[data-view=trail] .pn[data-p=trail],.grid[data-view=code] .pn[data-p=code],.grid[data-view=ai] .pn[data-p=ai]{display:flex}
+  .brand .s,#saveState,kbd{display:none}
+  .bar{gap:8px 14px}
+  .brand{flex:1 1 180px}
+  .timer{min-width:96px}
+  .actions{margin-left:auto}
+}
+.brief h3{font-size:14px;margin:14px 0 6px}
+.brief h3:first-child{margin-top:0}
+.brief ul{margin:0;padding-left:18px;display:grid;gap:4px}
+.brief .chipline{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.chip{font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;background:var(--surface-2);color:var(--muted);white-space:nowrap}
+.chip.good{background:var(--good-soft);color:var(--good)}.chip.bad{background:var(--bad-soft);color:var(--bad)}.chip.warn{background:var(--warn-soft);color:var(--warn)}.chip.acc{background:var(--accent-soft);color:var(--accent)}
+
+/* trail */
+.rec{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--bad)}
+.rec i{width:8px;height:8px;border-radius:50%;background:var(--bad);display:inline-block;animation:pulse 1.6s ease-in-out infinite}
+.rec.off{color:var(--muted)}.rec.off i{background:var(--muted);animation:none}
+@keyframes pulse{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.rec i{animation:none}.prog i{transition:none}}
+ul.tl{list-style:none;margin:0;padding:0;display:grid}
+ul.tl li{display:grid;grid-template-columns:38px 44px minmax(0,1fr);gap:6px 8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:12.5px;cursor:pointer;align-items:start}
+ul.tl li:last-child{border-bottom:0}
+ul.tl .id{font-family:var(--font-mono);font-weight:500}
+ul.tl .tm{font-family:var(--font-mono);color:var(--muted);font-size:11px}
+ul.tl .tx{grid-column:1 / -1;color:var(--ink);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word}
+ul.tl li.open .tx{-webkit-line-clamp:unset;display:block;white-space:pre-wrap}
+.ty{font-family:var(--font-mono);font-size:11px;padding:1px 6px;border-radius:5px;background:var(--surface-2);color:var(--muted);justify-self:start}
+.ty.prompt{background:var(--accent-soft);color:var(--accent)}.ty.test{background:var(--good-soft);color:var(--good)}.ty.ai{background:var(--warn-soft);color:var(--warn)}
+.empty{color:var(--muted);font-size:13px}
+
+/* editor */
+.ftabs{display:flex;gap:2px;flex-wrap:wrap}
+.ftabs button{border:1px solid transparent;background:none;border-radius:7px;padding:4px 10px;font-family:var(--font-mono);font-size:12px;cursor:pointer;color:var(--muted)}
+.ftabs button[aria-selected="true"]{background:var(--surface-2);color:var(--ink);border-color:var(--line)}
+.ed{position:relative;flex:1;min-height:140px;display:flex;background:var(--surface)}
+.gutter{width:44px;flex:none;overflow:hidden;border-right:1px solid var(--line);background:var(--surface-2);color:var(--muted);text-align:right;
+  font-family:var(--font-mono);font-size:13px;line-height:20px;padding:10px 8px 0 0;white-space:pre;user-select:none}
+.edwrap{position:relative;flex:1;min-width:0}
+.ed pre,.ed textarea{position:absolute;inset:0;margin:0;border:0;font-family:var(--font-mono);font-size:13px;line-height:20px;tab-size:2;white-space:pre;word-wrap:normal;letter-spacing:0}
+.ed pre{padding:10px 27px 63px 12px;overflow:hidden;pointer-events:none;color:var(--ink)}
+.ed textarea{padding:10px 12px 48px 12px;background:transparent;color:transparent;caret-color:var(--ink);resize:none;overflow:auto;outline:none;width:100%;height:100%}
+.ed textarea::selection{background:color-mix(in srgb,var(--accent) 30%,transparent)}
+.k{color:var(--syn-kw)}.s{color:var(--syn-str)}.c{color:var(--syn-com);font-style:italic}.n{color:var(--syn-num)}.f{color:var(--syn-fn)}.h{color:var(--accent);font-weight:600}
+.tests{border-top:1px solid var(--line);height:38%;min-height:170px;display:flex;flex-direction:column;min-width:0}
+.tests-b{flex:1;overflow:auto;padding:8px 14px;min-height:0;font-size:13px}
+.tr{display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:8px;padding:4px 0;align-items:start}
+.tr .ic{font-weight:700}.tr .ok{color:var(--good)}.tr .no{color:var(--bad)}
+.tr .ms{color:var(--muted);font-family:var(--font-mono);font-size:11px}
+.tr .why{grid-column:2 / -1;color:var(--bad);font-family:var(--font-mono);font-size:12px;word-break:break-word}
+pre.con{margin:6px 0 0;padding:8px 10px;background:var(--surface-2);border-radius:8px;font-family:var(--font-mono);font-size:12px;white-space:pre-wrap;word-break:break-word}
+
+/* assistant */
+.msgs{display:grid;gap:10px;align-content:start}
+.bub{max-width:100%;padding:9px 12px;border-radius:12px;font-size:13.5px;min-width:0;word-break:break-word}
+.bub.user{background:var(--accent-soft);justify-self:end;white-space:pre-wrap;max-width:92%}
+.bub.assistant{background:var(--surface-2);justify-self:stretch}
+.bub p+p,.bub p+ul,.bub ul+p,.bub p+ol,.bub ol+p{margin-top:8px}
+.bub ul,.bub ol{margin:0;padding-left:18px}
+.bub code{font-family:var(--font-mono);font-size:12px;background:var(--surface);border-radius:4px;padding:0 4px}
+.cb{margin:8px 0;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.cb-h{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:4px 8px;background:var(--surface-2);flex-wrap:wrap}
+.cb pre{margin:0;padding:8px 10px;overflow:auto;font-family:var(--font-mono);font-size:12px;line-height:1.5;max-height:260px}
+.cb pre code{background:none;padding:0}
+.cb-a{display:flex;gap:4px;flex-wrap:wrap}
+.compose{border-top:1px solid var(--line);padding:10px 14px;display:grid;gap:8px;flex:none}
+.compose textarea{width:100%;min-height:62px;max-height:140px;resize:vertical;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface);font-size:13.5px}
+.compose .row{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.compose label{display:flex;gap:6px;align-items:center;font-size:12.5px;color:var(--muted)}
+
+/* modal + toast */
+.ov{position:absolute;inset:0;background:color-mix(in srgb,var(--bg) 78%,transparent);backdrop-filter:blur(3px);display:grid;place-items:center;padding:16px;z-index:20;overflow:auto}
+.ov[hidden]{display:none}
+.modal{background:var(--surface);border:1px solid var(--line);border-radius:14px;max-width:640px;width:100%;padding:22px;display:grid;gap:14px;box-shadow:0 10px 40px rgba(0,0,0,.18);max-height:100%;overflow:auto}
+.modal h2{font-size:22px;letter-spacing:-.015em}
+.modal ul{margin:0;padding-left:18px;display:grid;gap:4px}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+@media (max-width:560px){.two{grid-template-columns:minmax(0,1fr)}}
+.opts{display:flex;gap:8px;flex-wrap:wrap}
+.opts label{display:flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer;font-weight:600;font-size:13.5px}
+.mrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+.stat{border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.stat b{display:block;font-size:20px;font-variant-numeric:tabular-nums}
+.warnbox{background:var(--warn-soft);color:var(--warn);border-radius:10px;padding:8px 12px;font-size:13px}
+textarea.json{width:100%;height:150px;font-family:var(--font-mono);font-size:11.5px;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--surface-2);resize:vertical}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:10px;font-size:13px;z-index:40;max-width:90vw}
+.toast[hidden]{display:none}
+</style>
+
+<!-- Starter files and canned text live in inert text blocks so they never need escaping. -->
+<script type="text/plain" id="src-limiter">// limiter.js: a per-key rate limiter for a public API.
+//
+// createLimiter({ ratePerMinute, burst, now }) returns { allow(key) }
+//   allow(key) -> { allowed: boolean, retryAfterMs: number }
+//
+// `now` is a function that returns the current time in milliseconds.
+// Tests pass a fake one.
+
+function createLimiter({ ratePerMinute = 60, burst = 10, now = Date.now } = {}) {
+  // TODO: decide how a key earns the right to make a request.
+  return {
+    allow(key) {
+      return { allowed: true, retryAfterMs: 0 };
+    },
+  };
+}
+
+module.exports = { createLimiter };
+</script>
+<script type="text/plain" id="src-tests">const { createLimiter } = require('./limiter');
+
+describe('rate limiter', () => {
+  it('allows requests up to the burst size', () => {
+    let t = 0;
+    const rl = createLimiter({ ratePerMinute: 60, burst: 5, now: () => t });
+    for (let i = 0; i < 5; i++) {
+      expect(rl.allow('key-a').allowed).toBe(true);
+    }
+  });
+
+  it('denies the next request and says when to retry', () => {
+    let t = 0;
+    const rl = createLimiter({ ratePerMinute: 60, burst: 2, now: () => t });
+    rl.allow('k');
+    rl.allow('k');
+    const r = rl.allow('k');
+    expect(r.allowed).toBe(false);
+    expect(r.retryAfterMs).toBeGreaterThan(0);
+  });
+
+  it('refills over time', () => {
+    let t = 0;
+    const rl = createLimiter({ ratePerMinute: 60, burst: 1, now: () => t });
+    expect(rl.allow('k').allowed).toBe(true);
+    expect(rl.allow('k').allowed).toBe(false);
+    t = 1000; // one token per second at 60 per minute
+    expect(rl.allow('k').allowed).toBe(true);
+  });
+
+  it('tracks each key separately', () => {
+    let t = 0;
+    const rl = createLimiter({ ratePerMinute: 60, burst: 1, now: () => t });
+    expect(rl.allow('a').allowed).toBe(true);
+    expect(rl.allow('a').allowed).toBe(false);
+    expect(rl.allow('b').allowed).toBe(true);
+  });
+});
+</script>
+<script type="text/plain" id="src-readme"># Rate limiter: decisions
+
+Write down what you decided and why. A reviewer reads this next to your code.
+
+- Algorithm:
+- Many keys (memory):
+- Several servers:
+- Not tested yet:
+</script>
+<script type="text/plain" id="src-harness">const __tests=[];let __suite='';const __mods={};
+function __fmt(v){try{return typeof v==='undefined'?'undefined':JSON.stringify(v)}catch(e){return String(v)}}
+function describe(n,f){const p=__suite;__suite=p?p+' > '+n:n;f();__suite=p}
+function it(n,f){__tests.push({name:(__suite?__suite+' > ':'')+n,f})}
+const test=it;
+function expect(v){
+  const mk=neg=>{
+    const chk=(ok,msg)=>{if(Boolean(ok)===neg)throw new Error(msg)};
+    return {
+      toBe(x){chk(Object.is(v,x),'expected '+__fmt(v)+(neg?' not':'')+' to be '+__fmt(x))},
+      toEqual(x){chk(JSON.stringify(v)===JSON.stringify(x),'expected '+__fmt(v)+(neg?' not':'')+' to equal '+__fmt(x))},
+      toBeGreaterThan(x){chk(v>x,'expected '+__fmt(v)+(neg?' not':'')+' to be greater than '+__fmt(x))},
+      toBeGreaterThanOrEqual(x){chk(v>=x,'expected '+__fmt(v)+(neg?' not':'')+' to be at least '+__fmt(x))},
+      toBeLessThan(x){chk(v<x,'expected '+__fmt(v)+(neg?' not':'')+' to be less than '+__fmt(x))},
+      toBeCloseTo(x,d){const p=Math.pow(10,-(d===undefined?2:d))/2;chk(Math.abs(v-x)<p,'expected '+__fmt(v)+(neg?' not':'')+' to be close to '+__fmt(x))},
+      toBeTruthy(){chk(v,'expected '+__fmt(v)+(neg?' not':'')+' to be truthy')},
+      toBeFalsy(){chk(!v,'expected '+__fmt(v)+(neg?' not':'')+' to be falsy')},
+      toThrow(){let th=false;try{v()}catch(e){th=true}chk(th,'expected function'+(neg?' not':'')+' to throw')}
+    };
+  };
+  const o=mk(false);o.not=mk(true);return o;
+}
+function require(p){const k=String(p).replace(/^\.\//,'').replace(/\.js$/,'');if(!__mods[k])throw new Error('Cannot find module '+p);return __mods[k].exports}
+['log','warn','error'].forEach(function(l){let n=0;console[l]=function(){if(n++<40)postMessage({k:'log',level:l,text:Array.prototype.map.call(arguments,function(x){return typeof x==='string'?x:__fmt(x)}).join(' ')})}});</script>
+<script type="text/plain" id="src-runner">(async function(){
+  for(const t of __tests){
+    const t0=performance.now();
+    try{await t.f();postMessage({k:'t',name:t.name,ok:true,ms:performance.now()-t0})}
+    catch(e){postMessage({k:'t',name:t.name,ok:false,ms:performance.now()-t0,msg:String(e&&e.message||e),stack:String(e&&e.stack||'')})}
+  }
+  postMessage({k:'done'});
+})();</script>
+<script type="text/plain" id="off-impl">A token bucket fits this brief: each key holds up to `burst` tokens and earns them back at `ratePerMinute`. One version:
+
+```js
+function createLimiter({ ratePerMinute = 60, burst = 10, now = Date.now } = {}) {
+  const buckets = new Map();
+  const perMs = ratePerMinute / 60000;
+  return {
+    allow(key) {
+      const t = now();
+      let b = buckets.get(key);
+      if (!b) {
+        b = { tokens: burst, last: t };
+        buckets.set(key, b);
+      }
+      b.tokens = Math.min(burst, b.tokens + (t - b.last) * perMs);
+      b.last = t;
+      if (b.tokens >= 1) {
+        b.tokens -= 1;
+        return { allowed: true, retryAfterMs: 0 };
+      }
+      return { allowed: false, retryAfterMs: Math.ceil((1 - b.tokens) / perMs) };
+    },
+  };
+}
+
+module.exports = { createLimiter };
+```
+
+It reads the clock once per call and keeps one small object per key. I have not run it against your tests, so run them before you trust it.</script>
+<script type="text/plain" id="off-tests">Cases worth covering beyond the four provided:
+
+- refill never goes past `burst`, even after a long idle gap
+- `retryAfterMs` is the real wait, not just a positive number
+- a very small rate (fractions of a token) still refills correctly
+- the clock going backwards does not hand out free tokens
+- one noisy key does not affect another
+
+Example for the first one:
+
+```js
+it('never refills past the burst size', () => {
+  let t = 0;
+  const rl = createLimiter({ ratePerMinute: 60, burst: 2, now: () => t });
+  t = 10 * 60 * 1000;
+  expect(rl.allow('k').allowed).toBe(true);
+  expect(rl.allow('k').allowed).toBe(true);
+  expect(rl.allow('k').allowed).toBe(false);
+});
+```</script>
+<script type="text/plain" id="off-mem">A `Map` with one entry per key grows with every key you have ever seen. Two common answers:
+
+- sweep entries that have been idle long enough to be full again. They would be recreated full anyway, so dropping them does not change behavior
+- cap the map size and evict the least recently used key, accepting that an evicted noisy key briefly gets a fresh bucket
+
+Run the sweep every N calls or on a timer, not on every request. Whichever you pick, write it in the README with the trade-off.</script>
+<script type="text/plain" id="off-dist">An in-memory limiter counts per server, so with 4 servers a key can really make about 4 times the limit. Options:
+
+- sticky routing by key, so one server sees all of a key's traffic
+- a shared store (for example Redis) with an atomic refill-and-take step, using the store's own clock so servers do not disagree about time
+- accept the approximation and divide the limit by the number of servers
+
+Each has a cost: extra latency, a new failure mode, or looser limits. Decide, say what happens when the shared store is down (fail open or closed), and write it down.</script>
+<script type="text/plain" id="off-clock">Take the clock as a parameter, as the starter code already does, so tests can control time. In production prefer a monotonic source (for example `performance.now()`) over `Date.now()`, which can jump. Guard against time going backwards: treat a negative gap as zero so it never produces negative tokens.</script>
+<script type="text/plain" id="off-fallback">I am the offline assistant, a scripted stand-in, so I only know a few topics here: how to implement the limiter, what to test, memory growth with many keys, running on several servers, and clocks. Ask about one of those. Where Claude is available in your view, this panel uses it instead and answers anything.</script>
+
+<div class="app" id="app">
+  <header class="bar gut">
+    <div class="brand"><div class="mark" aria-hidden="true">W</div>
+      <div><div class="t">Rate limiter for a public API</div><div class="s">Work sample · AI assistant allowed · unofficial demo</div></div></div>
+    <div class="timer" aria-label="Time left"><div class="tx mono" id="tmText">60:00</div><div class="prog"><i id="tmBar"></i></div></div>
+    <div class="actions">
+      <span class="small muted" id="saveState" aria-live="polite"></span>
+      <button class="btn" id="runBtn" type="button" disabled>Run tests <kbd>Ctrl+Enter</kbd></button>
+      <button class="btn primary" id="submitBtn" type="button" disabled>Submit work</button>
+    </div>
+  </header>
+  <nav class="tabs gut" id="tabs" aria-label="Panels">
+    <button type="button" data-p="brief" aria-selected="false">Brief</button>
+    <button type="button" data-p="code" aria-selected="true">Code</button>
+    <button type="button" data-p="ai" aria-selected="false">Assistant</button>
+    <button type="button" data-p="trail" aria-selected="false">Trail</button>
+  </nav>
+  <main class="grid gut" id="grid" data-view="code">
+    <section class="pn" data-p="brief" aria-label="Task brief">
+      <div class="pn-h"><h3>The task</h3><span class="chip acc" id="durChip">60 min</span></div>
+      <div class="pn-b brief">
+        <div class="chipline"><span class="chip good">AI allowed</span><span class="chip">JavaScript</span><span class="chip">Tests included</span></div>
+        <h3>Context</h3>
+        <p>A few clients are hammering your team's public API. Build the per-key rate limiter the gateway calls on every request.</p>
+        <h3>Requirements</h3>
+        <ul>
+          <li><code>allow(key)</code> says whether this request goes through, and when to retry if not.</li>
+          <li>A key can burst up to <code>burst</code> requests, then earns tokens back at <code>ratePerMinute</code>.</li>
+          <li>Time is injected through <code>now</code> so tests can control it.</li>
+          <li>Keys are independent.</li>
+        </ul>
+        <h3>Left open on purpose</h3>
+        <p>Memory with millions of keys. Running on several servers. What counts as a client. Decide, then write what you chose and why in <code>README.md</code>.</p>
+        <h3>Hand in</h3>
+        <ul><li>A working <code>limiter.js</code></li><li>Tests you trust in <code>limiter.test.js</code></li><li>Your decisions in <code>README.md</code></li></ul>
+        <h3>How it is read</h3>
+        <p class="muted small">A human reviewer reads your code and your work trail. AI can suggest scores against the team's checklist, with evidence. The reviewer decides.</p>
+      </div>
+    </section>
+
+    <section class="pn" data-p="trail" aria-label="Work trail">
+      <div class="pn-h"><h3>Work trail</h3><span class="rec off" id="recState"><i></i><span id="recText">not started</span></span></div>
+      <div class="pn-b"><ul class="tl" id="tl" aria-live="polite"></ul><p class="empty" id="tlEmpty">Events appear here as you work. You can see everything that is recorded.</p></div>
+      <div class="pn-f"><strong>Recorded:</strong> your prompts and the assistant's replies, edit summaries (lines added and removed), pasted or inserted blocks, test runs, README notes. <strong>Not recorded:</strong> webcam, audio, screen, keystroke timing, other tabs.</div>
+    </section>
+
+    <section class="pn" data-p="code" aria-label="Editor and tests">
+      <div class="pn-h"><div class="ftabs" id="ftabs" role="tablist" aria-label="Files">
+        <button type="button" role="tab" data-f="limiter.js" aria-selected="true">limiter.js</button>
+        <button type="button" role="tab" data-f="limiter.test.js" aria-selected="false">limiter.test.js</button>
+        <button type="button" role="tab" data-f="README.md" aria-selected="false">README.md</button></div>
+        <span class="small muted" id="edHint">Tab indents. Esc, then Tab, moves focus on.</span></div>
+      <div class="ed"><div class="gutter" id="gutter" aria-hidden="true"></div>
+        <div class="edwrap"><pre id="hl" aria-hidden="true"></pre><textarea id="ta" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Code editor" wrap="off"></textarea></div></div>
+      <div class="tests">
+        <div class="pn-h"><h3>Tests</h3><span id="testSummary" class="small muted">Not run yet</span></div>
+        <div class="tests-b" id="testOut" aria-live="polite"><p class="empty">Run the tests to see results here. They run in an isolated worker with a 4 second limit.</p></div>
+      </div>
+    </section>
+
+    <section class="pn" data-p="ai" aria-label="Assistant">
+      <div class="pn-h"><h3>Assistant</h3><span class="chip" id="modeChip" title="">starting…</span></div>
+      <div class="pn-b" id="msgsWrap"><div class="msgs" id="msgs"><p class="empty" id="msgEmpty">Ask anything about the task. Your prompts and its replies are part of your work trail.</p></div></div>
+      <div class="compose">
+        <textarea id="prompt" placeholder="Ask the assistant… (Enter sends, Shift+Enter adds a line)" aria-label="Message to the assistant" disabled></textarea>
+        <div class="row"><label><input type="checkbox" id="shareCode" checked> Share my files with the assistant</label>
+          <span><button class="btn sm" id="stopBtn" type="button" hidden>Stop</button> <button class="btn primary sm" id="sendBtn" type="button" disabled>Send</button></span></div>
+      </div>
+    </section>
+  </main>
+
+  <div class="ov" id="ov" hidden></div>
+  <div class="toast" id="toast" hidden role="status"></div>
+</div>
+
+<script>
+(function(){
+'use strict';
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const src=id=>$('#'+id).textContent.replace(/^\n/,'');
+const REDUCED=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+const EVAL_URL='https://claude.ai/artifact/B8jBXdExx4XYtP62NhDfou';
+const FILES=['limiter.js','limiter.test.js','README.md'];
+const STARTER={'limiter.js':src('src-limiter'),'limiter.test.js':src('src-tests'),'README.md':src('src-readme')};
+const KEY='ws.session.v1';
+
+/* ------------------------------------------------------------------ state */
+const S={started:false,submitted:false,timeUp:false,startedAt:0,durationMs:3600000,files:Object.assign({},STARTER),snap:Object.assign({},STARTER),
+  active:'limiter.js',trail:[],nextId:1,chat:[],mode:'offline',share:true,lastTest:null,testRuns:0,editedSinceTest:false,pasted:{},warned10:false};
+let sampleFn=null,busy=false,ctl=null,stopFlag=false,editTimers={};
+
+/* ------------------------------------------------------------------ helpers */
+function fmt(ms){const s=Math.max(0,Math.floor(ms/1000));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
+function elapsed(){return S.started?Date.now()-S.startedAt:0}
+let toastT=0;
+function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{t.hidden=true},2600)}
+function wordCount(t){return (t.trim().match(/\S+/g)||[]).length}
+
+/* ------------------------------------------------------------------ persistence (per-viewer convenience) */
+function save(){
+  if(!S.started&&!S.trail.length) return;
+  try{
+    localStorage.setItem(KEY,JSON.stringify({startedAt:S.startedAt,durationMs:S.durationMs,files:S.files,snap:S.snap,active:S.active,trail:S.trail,nextId:S.nextId,chat:S.chat,submitted:S.submitted,lastTest:S.lastTest,testRuns:S.testRuns,pasted:S.pasted}));
+    $('#saveState').textContent='Saved in this browser';
+  }catch(_){$('#saveState').textContent='Not saved (storage blocked)'}
+}
+function loadSaved(){try{const r=localStorage.getItem(KEY);return r?JSON.parse(r):null}catch(_){return null}}
+function clearSaved(){try{localStorage.removeItem(KEY)}catch(_){}}
+
+/* ------------------------------------------------------------------ trail */
+function logEvent(type,text,meta){
+  const ms=elapsed();
+  const ev={id:'E'+S.nextId++,t:fmt(ms),ms,type,text:String(text)};
+  if(meta) ev.meta=meta;
+  S.trail.push(ev);appendTrail(ev);updateRec();save();return ev;
+}
+function appendTrail(ev){
+  $('#tlEmpty').hidden=true;
+  const li=document.createElement('li');
+  li.innerHTML=`<span class="id">${esc(ev.id)}</span><span class="tm">${esc(ev.t)}</span><span class="ty ${esc(ev.type)}">${esc(ev.type)}</span><div class="tx">${esc(ev.text)}</div>`;
+  li.addEventListener('click',()=>li.classList.toggle('open'));
+  const ul=$('#tl');ul.appendChild(li);
+  const b=ul.parentElement;b.scrollTop=b.scrollHeight;
+}
+function renderTrailAll(){$('#tl').innerHTML='';$('#tlEmpty').hidden=S.trail.length>0;S.trail.forEach(appendTrail)}
+function updateRec(){
+  const on=S.started&&!S.submitted&&!S.timeUp;
+  $('#recState').classList.toggle('off',!on);
+  $('#recText').textContent=S.submitted?'submitted':S.timeUp?'time is up':S.started?`recording · ${S.trail.length} events`:'not started';
+}
+
+/* ------------------------------------------------------------------ editor */
+const ta=$('#ta'),hl=$('#hl'),gutter=$('#gutter');
+const JS_RE=/(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\.|[^`\\])*`)|\b(const|let|var|function|return|if|else|for|while|new|class|throw|try|catch|finally|of|in|typeof|async|await|break|continue|switch|case|default|null|undefined|true|false|this|require|module|exports)\b|\b(\d+(?:\.\d+)?)\b|(\b[A-Za-z_$][\w$]*)(?=\()/g;
+function highlight(code,file){
+  if(file==='README.md') return esc(code).replace(/^(#.*)$/gm,'<span class="h">$1</span>')+'\n';
+  let out='',last=0,m;JS_RE.lastIndex=0;
+  while((m=JS_RE.exec(code))){
+    out+=esc(code.slice(last,m.index));
+    const cls=m[1]?'c':m[2]?'s':m[3]?'k':m[4]?'n':'f';
+    out+=`<span class="${cls}">${esc(m[0])}</span>`;last=JS_RE.lastIndex;
+    if(m[0].length===0) JS_RE.lastIndex++;
+  }
+  return out+esc(code.slice(last))+'\n';
+}
+function paint(){
+  hl.innerHTML=highlight(ta.value,S.active);
+  const n=ta.value.split('\n').length;let g='';for(let i=1;i<=n;i++) g+=i+'\n';gutter.textContent=g;syncScroll();
+}
+function syncScroll(){hl.scrollTop=ta.scrollTop;hl.scrollLeft=ta.scrollLeft;gutter.scrollTop=ta.scrollTop}
+function openFile(f){
+  S.files[S.active]=ta.value;S.active=f;ta.value=S.files[f];
+  $$('#ftabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.f===f)));
+  paint();ta.scrollTop=0;ta.scrollLeft=0;syncScroll();
+}
+$('#ftabs').addEventListener('click',e=>{const b=e.target.closest('[data-f]');if(b&&b.dataset.f!==S.active) openFile(b.dataset.f)});
+ta.addEventListener('scroll',syncScroll);
+ta.addEventListener('input',()=>{S.files[S.active]=ta.value;if(S.active!=='README.md') S.editedSinceTest=true;paint();scheduleFlush(S.active)});
+ta.addEventListener('paste',e=>{
+  const txt=(e.clipboardData&&e.clipboardData.getData('text'))||'';
+  const lines=txt.split('\n').length;
+  if(lines>=3) S.pasted[S.active]='paste';
+});
+ta.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();runTests();return}
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();flushAll();save();toast('Saved in this browser');return}
+  if(e.key==='Escape'){S.tabFree=true;return}
+  if(e.key==='Tab'&&!e.shiftKey&&!S.tabFree){
+    e.preventDefault();ins('  ');return;
+  }
+  if(e.key!=='Tab') S.tabFree=false;
+  if(e.key==='Enter'&&!e.shiftKey&&S.active!=='README.md'){
+    const v=ta.value,p=ta.selectionStart,ls=v.lastIndexOf('\n',p-1)+1,line=v.slice(ls,p);
+    const ind=(line.match(/^\s*/)||[''])[0],extra=/[{(\[]\s*$/.test(line)?'  ':'';
+    e.preventDefault();ins('\n'+ind+extra);
+  }
+});
+function ins(text){
+  const s=ta.selectionStart,en=ta.selectionEnd;
+  ta.setRangeText(text,s,en,'end');
+  ta.dispatchEvent(new Event('input',{bubbles:true}));
+}
+
+/* diff and edit events */
+function lineDiff(a,b){
+  const A=a.split('\n'),B=b.split('\n');let s=0;
+  while(s<A.length&&s<B.length&&A[s]===B[s]) s++;
+  let e=0;while(e<A.length-s&&e<B.length-s&&A[A.length-1-e]===B[B.length-1-e]) e++;
+  const x=A.slice(s,A.length-e),y=B.slice(s,B.length-e);
+  if(!x.length&&!y.length) return {added:[],removed:0};
+  if(x.length*y.length>160000) return {added:y,removed:x.length};
+  const n=x.length,m=y.length,w=m+1,L=new Uint16Array((n+1)*w);
+  for(let i=n-1;i>=0;i--) for(let j=m-1;j>=0;j--) L[i*w+j]=x[i]===y[j]?L[(i+1)*w+j+1]+1:Math.max(L[(i+1)*w+j],L[i*w+j+1]);
+  const added=[];let i=0,j=0,removed=0;
+  while(i<n&&j<m){
+    if(x[i]===y[j]){i++;j++}
+    else if(L[(i+1)*w+j]>=L[i*w+j+1]){removed++;i++}
+    else{added.push(y[j]);j++}
+  }
+  removed+=n-i;while(j<m){added.push(y[j]);j++}
+  return {added,removed};
+}
+function excerpt(lines){
+  const t=lines.map(l=>l.trim()).filter(Boolean).join(' / ');
+  return t.length>200?t.slice(0,200)+'…':t;
+}
+function scheduleFlush(f){clearTimeout(editTimers[f]);editTimers[f]=setTimeout(()=>flushEdit(f),2500)}
+function flushEdit(f){
+  clearTimeout(editTimers[f]);editTimers[f]=0;
+  if(!S.started||S.submitted) return;
+  const cur=f===S.active?ta.value:S.files[f];S.files[f]=cur;
+  if(cur===S.snap[f]) return;
+  const d=lineDiff(S.snap[f],cur);S.snap[f]=cur;
+  const src0=S.pasted[f]==='ai'?'inserted from the assistant':S.pasted[f]==='paste'?'pasted':'typed';S.pasted[f]=null;
+  const ex=excerpt(d.added);
+  if(f==='README.md') logEvent('note',`README.md updated (+${d.added.length} −${d.removed} lines, ${src0}): ${ex||'lines removed'}`,{file:f,source:src0});
+  else logEvent('edit',`${f}: +${d.added.length} −${d.removed} lines (${src0}). ${ex}`.trim(),{file:f,source:src0});
+}
+function flushAll(){FILES.forEach(flushEdit)}
+
+/* ------------------------------------------------------------------ test runner (worker) */
+function buildWorker(){
+  const parts=[],map=[];let line=1;
+  const add=(text,file)=>{const n=text.split('\n').length;if(file) map.push({file,from:line,to:line+n-1});parts.push(text);line+=n};
+  add(src('src-harness'));
+  add("__mods.limiter={exports:{}};(function(module,exports){");
+  add(S.files['limiter.js'],'limiter.js');
+  add("})(__mods.limiter,__mods.limiter.exports);");
+  add("(function(require){");
+  add(S.files['limiter.test.js'],'limiter.test.js');
+  add("})(require);");
+  add(src('src-runner'));
+  return {code:parts.join('\n'),map};
+}
+function locate(map,text){
+  const re=/:(\d+):(\d+)/g;let m;
+  while((m=re.exec(text))){const ln=Number(m[1]);const r=map.find(x=>ln>=x.from&&ln<=x.to);if(r) return r.file+':'+(ln-r.from+1)}
+  return '';
+}
+let testing=false;
+function runTests(){
+  if(testing||!S.started||S.submitted) return;
+  flushAll();testing=true;$('#runBtn').disabled=true;$('#testSummary').textContent='Running…';
+  const {code,map}=buildWorker();
+  const url=URL.createObjectURL(new Blob([code],{type:'text/javascript'}));
+  let w;const results=[],logs=[];let finished=false;const t0=performance.now();
+  const finish=(err)=>{
+    if(finished) return;finished=true;clearTimeout(to);try{w&&w.terminate()}catch(_){}URL.revokeObjectURL(url);
+    testing=false;$('#runBtn').disabled=false;
+    const passed=results.filter(r=>r.ok).length,failed=results.filter(r=>!r.ok);
+    S.lastTest={passed,failed:failed.length,total:results.length,error:err||null};S.testRuns++;S.editedSinceTest=false;
+    renderTests(results,logs,err);
+    let text;
+    if(err) text=`Ran tests: could not run. ${err}`;
+    else{
+      text=`Ran tests: ${passed} passed, ${failed.length} failed.`;
+      if(failed.length) text+=' Failed: '+failed.map(f=>`${f.name} (${f.msg})`).join('; ');
+      if(text.length>400) text=text.slice(0,400)+'…';
+    }
+    logEvent('test',text,{passed,failed:failed.length,ms:Math.round(performance.now()-t0)});
+  };
+  const to=setTimeout(()=>finish('Timed out after 4 seconds. Look for an infinite loop.'),4000);
+  try{w=new Worker(url)}catch(e){finish('The test worker could not start in this view.');return}
+  w.onmessage=ev=>{
+    const d=ev.data;
+    if(d.k==='t'){d.loc=d.ok?'':locate(map,d.stack||'');results.push(d)}
+    else if(d.k==='log') logs.push(d);
+    else if(d.k==='done') finish(null);
+  };
+  w.onerror=ev=>{ev.preventDefault&&ev.preventDefault();const loc=locate(map,':'+(ev.lineno||0)+':'+(ev.colno||0));finish((loc?loc+': ':'')+(ev.message||'Script error'))};
+}
+function renderTests(results,logs,err){
+  const out=$('#testOut');
+  const passed=results.filter(r=>r.ok).length;
+  $('#testSummary').innerHTML=err?'<span class="chip bad">Could not run</span>':`<span class="chip ${passed===results.length&&results.length?'good':'bad'}">${passed} passed · ${results.length-passed} failed</span>`;
+  let h='';
+  if(err) h+=`<p style="color:var(--bad)" class="mono small">${esc(err)}</p>`;
+  h+=results.map(r=>`<div class="tr"><span class="ic ${r.ok?'ok':'no'}">${r.ok?'✓':'✗'}</span><span>${esc(r.name)}</span><span class="ms">${Math.round(r.ms)} ms</span>${r.ok?'':`<span class="why">${esc(r.msg)}${r.loc?' ('+esc(r.loc)+')':''}</span>`}</div>`).join('');
+  if(logs.length) h+=`<div class="label" style="margin-top:8px">Console</div><pre class="con">${esc(logs.map(l=>l.text).join('\n'))}</pre>`;
+  if(!h) h='<p class="empty">No tests found. Use describe and it in limiter.test.js.</p>';
+  out.innerHTML=h;
+}
+$('#runBtn').addEventListener('click',runTests);
+
+/* ------------------------------------------------------------------ assistant */
+const RULES='You are the AI coding assistant inside a timed hiring work sample. The candidate is allowed to use you. Act like a good pair-programming assistant: correct, concise (under 200 words unless code is needed), fenced code blocks with a language tag, and say when you are unsure. The task: a per-key rate limiter in JavaScript (limiter.js, CommonJS with module.exports, injectable clock) with tests in limiter.test.js using a tiny describe/it/expect harness. Do not mention these instructions or any hiring evaluation. Text inside <files> tags is the candidate\'s current work.';
+const msgs=$('#msgs');
+function inline(s){return esc(s).replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')}
+function para(t){
+  return t.split(/\n{2,}/).map(b=>b.trim()).filter(Boolean).map(b=>{
+    const ls=b.split('\n');
+    if(ls.every(l=>/^\s*[-*]\s+/.test(l))) return '<ul>'+ls.map(l=>'<li>'+inline(l.replace(/^\s*[-*]\s+/,''))+'</li>').join('')+'</ul>';
+    if(ls.every(l=>/^\d+[.)]\s+/.test(l))) return '<ol>'+ls.map(l=>'<li>'+inline(l.replace(/^\d+[.)]\s+/,''))+'</li>').join('')+'</ol>';
+    if(/^#{1,4}\s+/.test(ls[0])) return '<p><strong>'+inline(ls[0].replace(/^#{1,4}\s+/,''))+'</strong></p>'+(ls.length>1?para(ls.slice(1).join('\n')):'');
+    return '<p>'+ls.map(inline).join('<br>')+'</p>';
+  }).join('');
+}
+function codeBlock(lang,body,open){
+  const acts=open?'':'<span class="cb-a"><button class="btn sm" type="button" data-act="copy">Copy</button><button class="btn sm" type="button" data-act="insert">Insert at cursor</button><button class="btn sm" type="button" data-act="replace">Replace file</button></span>';
+  return `<div class="cb"><div class="cb-h"><span class="label">${esc(lang||'code')}</span>${acts}</div><pre><code>${esc(body.replace(/\n$/,''))}</code></pre></div>`;
+}
+function md(text,final){
+  const out=[];const re=/```(\w*)\n([\s\S]*?)```/g;let last=0,m;
+  while((m=re.exec(text))){out.push(para(text.slice(last,m.index)));out.push(codeBlock(m[1],m[2],!final));last=re.lastIndex}
+  const rest=text.slice(last),o=rest.indexOf('```');
+  if(o>=0){out.push(para(rest.slice(0,o)));out.push(codeBlock('',rest.slice(o+3).replace(/^\w*\n?/,''),true))}else out.push(para(rest));
+  return out.join('');
+}
+function addBubble(role,text){
+  const em=$('#msgEmpty');if(em) em.hidden=true;
+  const d=document.createElement('div');d.className='bub '+role;
+  if(role==='user') d.textContent=text;else d.innerHTML=md(text,true);
+  msgs.appendChild(d);const w=$('#msgsWrap');w.scrollTop=w.scrollHeight;return d;
+}
+function setBubble(d,text,final){d.innerHTML=md(text,!!final);const w=$('#msgsWrap');w.scrollTop=w.scrollHeight}
+msgs.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]');if(!b||S.submitted||S.timeUp) return;
+  const code=b.closest('.cb').querySelector('code').textContent;
+  if(b.dataset.act==='copy'){
+    (navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(code):Promise.reject()).then(()=>toast('Copied'),()=>toast('Copy blocked here. Select the code and copy it.'));
+    return;
+  }
+  if(!S.started) return;
+  flushEdit(S.active);
+  if(b.dataset.act==='insert'){
+    const s=ta.selectionStart;ta.setRangeText(code+'\n',s,ta.selectionEnd,'end');
+  }else{ta.value=code+'\n'}
+  S.pasted[S.active]='ai';S.files[S.active]=ta.value;S.editedSinceTest=true;paint();flushEdit(S.active);
+  toast((b.dataset.act==='insert'?'Inserted into ':'Replaced ')+S.active);
+});
+function offlineReply(q){
+  const t=q.toLowerCase();
+  if(/(multiple|several|many|more than one) (servers|instances|nodes)|redis|distributed|cluster|scale out/.test(t)) return src('off-dist');
+  if(/memory|many keys|millions|evict|leak|cleanup|ttl|lru/.test(t)) return src('off-mem');
+  if(/test|edge case|coverage/.test(t)) return src('off-tests');
+  if(/clock|now\(|monotonic|date\.now|timestamp/.test(t)) return src('off-clock');
+  if(/token bucket|rate limit|implement|write|build|algorithm|sliding|window|start|how (do|to|should)/.test(t)) return src('off-impl');
+  return src('off-fallback');
+}
+async function typeOut(bubble,text){
+  if(REDUCED){setBubble(bubble,text,true);return}
+  let i=0;
+  while(i<text.length){
+    if(stopFlag){throw {code:'cancelled',text:text.slice(0,i)}}
+    i=Math.min(text.length,i+14);setBubble(bubble,text.slice(0,i),false);
+    await new Promise(r=>setTimeout(r,18));
+  }
+  setBubble(bubble,text,true);
+}
+async function askClaude(bubble){
+  const files=S.share?'\n\n<files>\n--- limiter.js ---\n'+S.files['limiter.js'].slice(0,6000)+'\n--- limiter.test.js ---\n'+S.files['limiter.test.js'].slice(0,4000)+'\n--- README.md ---\n'+S.files['README.md'].slice(0,1500)+'\n</files>':'';
+  let hist=S.chat.slice(-11);while(hist.length&&hist[0].role!=='user') hist=hist.slice(1);
+  hist=hist.map((m,i)=>i===hist.length-1?{role:m.role,content:m.content+files}:m);
+  ctl=new AbortController();
+  const r=await sampleFn([{role:'user',content:RULES}].concat(hist),{cache:false,modelTier:'quick',signal:ctl.signal,onText:({text})=>setBubble(bubble,text,false)});
+  setBubble(bubble,r.text,true);
+  return r.text;
+}
+function setBusy(b){
+  busy=b;$('#sendBtn').disabled=b||!S.started||S.submitted||S.timeUp;$('#stopBtn').hidden=!b;
+  $('#prompt').disabled=!S.started||S.submitted||S.timeUp;
+}
+async function send(){
+  const input=$('#prompt'),text=input.value.trim();
+  if(!text||busy||!S.started||S.submitted||S.timeUp) return;
+  input.value='';flushAll();
+  addBubble('user',text);
+  logEvent('prompt',text,{sharedFiles:S.share,assistant:S.mode});
+  S.chat.push({role:'user',content:text});
+  const bubble=addBubble('assistant','');bubble.innerHTML='<p class="muted">Thinking…</p>';
+  setBusy(true);stopFlag=false;
+  let reply='',stopped=false;
+  try{
+    try{
+      reply=S.mode==='claude'?await askClaude(bubble):(await typeOut(bubble,reply=offlineReply(text)),reply);
+    }catch(e){
+      if(S.mode==='claude'&&['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed'].includes(e&&e.code)){
+        setMode('offline');toast('Claude is not available in this view. Using the offline assistant.');
+        reply=offlineReply(text);await typeOut(bubble,reply);
+      }else throw e;
+    }
+  }catch(e){
+    if(e&&e.code==='cancelled'){stopped=true;reply=(e.text||'').trim();if(!reply){bubble.innerHTML='<p class="muted">Stopped.</p>'}else setBubble(bubble,reply,true)}
+    else if(e&&e.code==='rate_limited'){bubble.innerHTML='<p class="muted">Too many requests right now. Wait a moment, then send again.</p>';reply=''}
+    else{reply=(e&&e.text)||'';bubble.innerHTML=(reply?md(reply,true):'')+'<p class="muted">The assistant could not finish. Send your message again.</p>'}
+  }
+  if(reply){S.chat.push({role:'assistant',content:reply});logEvent('ai',reply+(stopped?' [stopped by candidate]':''),{assistant:S.mode})}
+  else S.chat.pop();
+  setBusy(false);
+}
+function setMode(m){
+  S.mode=m;const c=$('#modeChip');
+  c.textContent=m==='claude'?'Claude · your account':'Offline assistant';
+  c.className='chip '+(m==='claude'?'good':'warn');
+  c.title=m==='claude'?'Messages are sent to Claude using your Claude account.':'A scripted stand-in with a few topics. Nothing leaves this page.';
+}
+$('#sendBtn').addEventListener('click',send);
+$('#stopBtn').addEventListener('click',()=>{stopFlag=true;if(ctl) ctl.abort()});
+$('#prompt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();send()}});
+$('#shareCode').addEventListener('change',e=>{S.share=e.target.checked});
+
+/* ------------------------------------------------------------------ timer */
+let tick=0;
+function updateTimer(){
+  if(!S.started||S.submitted){return}
+  const left=S.durationMs-elapsed();
+  $('#tmText').textContent=fmt(left);
+  $('#tmBar').style.width=Math.min(100,elapsed()/S.durationMs*100)+'%';
+  $('#tmText').className='tx mono'+(left<120000?' bad':left<600000?' warn':'');
+  if(left<=600000&&!S.warned10&&S.durationMs>1200000){S.warned10=true;toast('10 minutes left')}
+  if(left<=0&&!S.timeUp){S.timeUp=true;flushAll();lockAll();logEvent('system','Time is up',{});showSubmit(true)}
+}
+function lockAll(){
+  ta.readOnly=true;setBusy(false);$('#runBtn').disabled=true;updateRec();
+}
+
+/* ------------------------------------------------------------------ modals */
+const ov=$('#ov');
+function modal(html){ov.innerHTML='<div class="modal" role="dialog" aria-modal="true">'+html+'</div>';ov.hidden=false;const f=ov.querySelector('[data-focus]');if(f) f.focus()}
+function closeModal(){ov.hidden=true;ov.innerHTML=''}
+function showIntro(){
+  const saved=loadSaved();
+  const canResume=saved&&!saved.submitted&&saved.startedAt;
+  const leftMs=canResume?saved.durationMs-(Date.now()-saved.startedAt):0;
+  modal(`<div><span class="label">Work sample · unofficial demo</span><h2 style="margin-top:6px">Rate limiter for a public API</h2></div>
+    <p>A short engineering task you do in this tab, with an AI assistant allowed. This is a demo of the candidate side of an AI-allowed hiring work sample, built from a public job post. It is not any company's real product.</p>
+    <div class="two">
+      <div><h3>What you will do</h3><ul class="small"><li>Read the brief, write <code>limiter.js</code>, run the tests</li><li>Use the assistant as you would at work</li><li>Write your decisions in <code>README.md</code></li></ul></div>
+      <div><h3>Recorded, and visible to you</h3><ul class="small"><li>Your prompts and the assistant's replies</li><li>Edit summaries, pasted or inserted blocks</li><li>Test runs and README notes</li><li class="muted">Not recorded: webcam, audio, screen, keystroke timing, other tabs</li></ul></div>
+    </div>
+    <p class="small muted">AI can suggest scores against a checklist, with evidence. A human reviewer makes the decision.</p>
+    <div><div class="label" style="margin-bottom:6px">Length</div><div class="opts" id="durOpts"><label><input type="radio" name="dur" value="60" checked> 60 minutes</label><label><input type="radio" name="dur" value="10"> 10 minutes (quick demo)</label></div></div>
+    <label class="small" style="display:flex;gap:8px;align-items:flex-start"><input type="checkbox" id="consent" style="margin-top:3px"> <span>I understand what is recorded and that a human reviews it. ${sampleFn?'Assistant messages are sent to Claude using my Claude account.':'The assistant here is a scripted offline stand-in; nothing leaves this page.'}</span></label>
+    <div class="mrow">${canResume?`<button class="btn" id="resumeBtn" type="button">Resume saved session (${leftMs>0?fmt(leftMs)+' left':'time is up'})</button>`:''}<button class="btn primary" id="startBtn" type="button" disabled data-focus>Start the work sample</button></div>`);
+  $('#consent').addEventListener('change',e=>{$('#startBtn').disabled=!e.target.checked});
+  $('#startBtn').addEventListener('click',()=>{
+    const mins=Number((ov.querySelector('input[name=dur]:checked')||{}).value||60);
+    if(canResume) clearSaved();
+    startSession(mins*60000);
+  });
+  if(canResume) $('#resumeBtn').addEventListener('click',()=>resumeSession(saved));
+}
+function setActive(){
+  $('#runBtn').disabled=!S.started||S.submitted||S.timeUp;$('#submitBtn').disabled=!S.started||S.submitted;
+  ta.readOnly=!S.started||S.submitted||S.timeUp;setBusy(false);updateRec();
+  $('#durChip').textContent=Math.round(S.durationMs/60000)+' min';
+}
+function startSession(ms){
+  Object.assign(S,{started:true,submitted:false,timeUp:false,startedAt:Date.now(),durationMs:ms,files:Object.assign({},STARTER),snap:Object.assign({},STARTER),trail:[],nextId:1,chat:[],lastTest:null,testRuns:0,pasted:{},warned10:false,active:'limiter.js'});
+  msgs.innerHTML='<p class="empty" id="msgEmpty">Ask anything about the task. Your prompts and its replies are part of your work trail.</p>';
+  $('#tl').innerHTML='';$('#tlEmpty').hidden=false;$('#testOut').innerHTML='<p class="empty">Run the tests to see results here. They run in an isolated worker with a 4 second limit.</p>';$('#testSummary').textContent='Not run yet';
+  closeModal();ta.value=STARTER['limiter.js'];openFile('limiter.js');setActive();
+  logEvent('system',`Session started (${Math.round(ms/60000)} min, AI assistant allowed, assistant: ${S.mode==='claude'?'Claude':'offline'})`,{});
+  updateTimer();ta.focus();
+}
+function resumeSession(sv){
+  Object.assign(S,{started:true,submitted:false,timeUp:false,startedAt:sv.startedAt,durationMs:sv.durationMs,files:sv.files,snap:sv.snap,trail:sv.trail,nextId:sv.nextId,chat:sv.chat||[],lastTest:sv.lastTest,testRuns:sv.testRuns||0,pasted:sv.pasted||{},active:sv.active||'limiter.js'});
+  closeModal();renderTrailAll();ta.value=S.files[S.active];
+  $$('#ftabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.f===S.active)));paint();
+  msgs.innerHTML='';
+  if(S.chat.length){S.chat.forEach(m=>addBubble(m.role,m.content))}else msgs.innerHTML='<p class="empty" id="msgEmpty">Ask anything about the task. Your prompts and its replies are part of your work trail.</p>';
+  setActive();logEvent('system','Session resumed',{});updateTimer();
+}
+function stats(){
+  const c=t=>S.trail.filter(e=>e.type===t).length;
+  return {el:elapsed(),prompts:c('prompt'),replies:c('ai'),edits:c('edit'),aiBlocks:S.trail.filter(e=>e.meta&&e.meta.source==='inserted from the assistant').length,runs:c('test'),words:wordCount(S.files['README.md'].replace(STARTER['README.md'],''))};
+}
+function showSubmit(timeUp){
+  flushAll();const st=stats(),warns=[];
+  if(S.editedSinceTest||!S.testRuns) warns.push(S.testRuns?'You changed code since the last test run.':'You have not run the tests yet.');
+  if(S.lastTest&&(S.lastTest.failed||S.lastTest.error)) warns.push('The last test run had failures.');
+  if(S.files['README.md']===STARTER['README.md']) warns.push('The README still has only the starter text.');
+  modal(`<div><span class="label">${timeUp?'Time is up':'Review before you submit'}</span><h2 style="margin-top:6px">${timeUp?'Time is up':'Ready to submit?'}</h2></div>
+    <div class="stats"><div class="stat"><span class="label">Time used</span><b>${fmt(st.el)}</b></div><div class="stat"><span class="label">Prompts</span><b>${st.prompts}</b></div><div class="stat"><span class="label">Assistant blocks used</span><b>${st.aiBlocks}</b></div><div class="stat"><span class="label">Test runs</span><b>${st.runs}</b></div><div class="stat"><span class="label">Last tests</span><b>${S.lastTest?(S.lastTest.error?'error':S.lastTest.passed+'/'+S.lastTest.total):'–'}</b></div></div>
+    ${warns.length?`<div class="warnbox"><strong>Worth a look:</strong><ul style="margin:4px 0 0">${warns.map(w=>`<li>${esc(w)}</li>`).join('')}</ul></div>`:''}
+    <p class="small muted">Submitting locks your files. The reviewer sees your work trail (${S.trail.length} events) next to your code. You can read every event in the Trail panel first.</p>
+    <div class="mrow">${timeUp?'':'<button class="btn" id="backBtn" type="button" data-focus>Keep working</button>'}<button class="btn primary" id="finalBtn" type="button" ${timeUp?'data-focus':''}>Submit work</button></div>`);
+  const b=$('#backBtn');if(b) b.addEventListener('click',closeModal);
+  $('#finalBtn').addEventListener('click',finalSubmit);
+}
+function exportJson(){
+  return JSON.stringify({task:'rate-limiter',version:1,assistant:S.mode,durationMs:S.durationMs,elapsedMs:S.submitted?S.endMs:elapsed(),events:S.trail.map(e=>({id:e.id,t:e.t,type:e.type,text:e.text})),files:S.files,lastTest:S.lastTest},null,2);
+}
+function finalSubmit(){
+  flushAll();S.endMs=elapsed();
+  if(!S.submitted){logEvent('system','Work submitted',{});}
+  S.submitted=true;lockAll();setActive();save();
+  const st=stats();
+  modal(`<div><span class="label">Submitted</span><h2 style="margin-top:6px">Your work is in</h2></div>
+    <p>A human reviewer now reads your code and your work trail. AI may suggest scores with evidence, and the reviewer decides. In this demo nothing was sent anywhere: the trail below is yours to copy.</p>
+    <div class="stats"><div class="stat"><span class="label">Time used</span><b>${fmt(S.endMs)}</b></div><div class="stat"><span class="label">Trail events</span><b>${S.trail.length}</b></div><div class="stat"><span class="label">Prompts</span><b>${st.prompts}</b></div><div class="stat"><span class="label">Test runs</span><b>${st.runs}</b></div></div>
+    <div><div class="label" style="margin-bottom:6px">Work trail as JSON</div><textarea class="json" id="jsonOut" readonly aria-label="Work trail JSON"></textarea></div>
+    <div class="mrow"><a class="btn" href="${EVAL_URL}" target="_blank" rel="noopener">See how a trail is scored</a><button class="btn" id="copyBtn" type="button">Copy trail JSON</button><button class="btn primary" id="againBtn" type="button" data-focus>Start over</button></div>`);
+  $('#jsonOut').value=exportJson();
+  $('#copyBtn').addEventListener('click',()=>{
+    const v=$('#jsonOut').value;
+    (navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(v):Promise.reject()).then(()=>toast('Copied'),()=>{$('#jsonOut').select();toast('Press Ctrl+C to copy')});
+  });
+  $('#againBtn').addEventListener('click',()=>{clearSaved();location.reload()});
+}
+$('#submitBtn').addEventListener('click',()=>{if(S.started&&!S.submitted) showSubmit(false)});
+ov.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('#backBtn')) closeModal()});
+
+/* ------------------------------------------------------------------ tabs (narrow) */
+$('#tabs').addEventListener('click',e=>{
+  const b=e.target.closest('[data-p]');if(!b) return;
+  $('#grid').dataset.view=b.dataset.p;
+  $$('#tabs button').forEach(x=>x.setAttribute('aria-selected',String(x===b)));
+});
+
+/* ------------------------------------------------------------------ boot */
+ta.value=S.files['limiter.js'];ta.readOnly=true;paint();setMode('offline');renderTrailAll();
+window.addEventListener('beforeunload',()=>{try{flushAll();save()}catch(_){}});
+setInterval(updateTimer,1000);
+showIntro();
+(async function(){
+  try{
+    if(window.claude&&typeof window.claude.use==='function'){
+      sampleFn=await window.claude.use('sample');
+      if(sampleFn){setMode('claude');if(!S.started&&!ov.hidden){const c=$('#consent');if(c){const sp=c.parentElement.querySelector('span');sp.textContent='I understand what is recorded and that a human reviews it. Assistant messages are sent to Claude using my Claude account.'}}}
+    }
+  }catch(_){sampleFn=null}
+})();
+})();
+</script>
+
+</body>
+</html>
